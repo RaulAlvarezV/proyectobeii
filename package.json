@@ -1,0 +1,18 @@
+{
+  "name": "field-vision-api",
+  "version": "1.0.0",
+  "description": "API de eventos e inscripciones de un club de hockey - Backend II Coderhouse",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "author": "Raul Alvarez Villarraza",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.9.4"
+  }
+}
