@@ -17,13 +17,13 @@ Dos decisiones que vienen de la temática:
 
 - La entidad de la consigna se llama `Enrollment` (inscripción) y no `Ticket`. En un club las
   jugadoras se anotan a una actividad, no compran una entrada, así que el evento no tiene precio.
-- Los roles llevan el nombre que se usa en el club. La equivalencia con los del curso es directa:
+- Los roles son los tres del curso. Aplicados al club son:
 
-| Rol del curso | Rol acá | Quién es |
+| Rol | Quién es | Qué puede hacer |
 |---|---|---|
-| `admin` | `admin` | Dirigencia del club |
-| `organizer` | `coach` | Cuerpo técnico: crea y administra las actividades |
-| `user` | `player` | Jugadora: consulta actividades y se anota |
+| `admin` | Dirigencia del club | Gestiona usuarias, categorías y actividades |
+| `organizer` | Cuerpo técnico | Crea y administra las actividades |
+| `user` | Jugadora | Consulta actividades y se anota |
 
 Estado actual: la base por capas está armada y el registro de usuarias funciona con validaciones,
 normalización de email y hash con bcrypt. Falta el login con JWT, las cookies, Passport y el
@@ -265,9 +265,9 @@ Campos que espera, los cuatro obligatorios:
 | `email` | string | Requerido, formato válido, único. Se guarda con trim y en minúsculas |
 | `password` | string | Requerido, mínimo 6 caracteres. Se guarda hasheado con bcrypt |
 
-El campo `role` **se ignora si viene en el body**. Toda usuaria que se registra queda como
-`player`; los roles `coach` y `admin` se asignan aparte. Si no fuera así, cualquiera podría
-registrarse como administradora del club.
+El campo `role` **se ignora si viene en el body**. Toda usuaria que se registra queda como `user`;
+los roles `organizer` y `admin` se asignan aparte. Si no fuera así, cualquiera podría registrarse
+como administradora del club.
 
 Cómo probarlo:
 
@@ -287,7 +287,7 @@ Respuesta `201`, con el email ya normalizado y sin el campo `password`:
     "first_name": "Ana",
     "last_name": "Pérez",
     "email": "ana@mail.com",
-    "role": "player"
+    "role": "user"
   }
 }
 ```
@@ -353,7 +353,7 @@ Si el evento ya está completo, responde 409:
 ## Modelo de datos
 
 **User**: `first_name`, `last_name`, `email` (único, guardado en minúsculas), `password` (hasheado
-con bcrypt, nunca en texto plano), `role` (`admin` | `coach` | `player`, por defecto `player`).
+con bcrypt, nunca en texto plano), `role` (`user` | `organizer` | `admin`, por defecto `user`).
 
 **Category**: `name` (único), `description`. Representa la categoría del club: Sub-14, Sub-16,
 Primera.

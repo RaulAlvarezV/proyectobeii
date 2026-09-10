@@ -24,13 +24,13 @@ const userSchema = new Schema({
         type: String,
         required: true
     },
-    //los roles del curso son admin/organizer/user, los adapto al club:
-    //coach es el organizer (cuerpo tecnico) y player es el user (la jugadora).
-    //el default es player, nadie se registra siendo otra cosa
+    //en el club: organizer es el cuerpo tecnico (arma las actividades)
+    //y user es la jugadora, que consulta y se anota.
+    //el default es user, nadie se registra siendo otra cosa
     role: {
         type: String,
-        enum: ["admin", "coach", "player"],
-        default: "player"
+        enum: ["user", "organizer", "admin"],
+        default: "user"
     }
 }, { timestamps: true });
 

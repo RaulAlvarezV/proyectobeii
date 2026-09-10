@@ -43,7 +43,7 @@ export class SessionsService {
         const hashedPassword = await hashPassword(password);
 
         //el role NO lo tomo del body a proposito, sino cualquiera se registra como admin.
-        //el modelo le pone player por default
+        //el modelo le pone user por default
         return this.repository.create({
             first_name,
             last_name,
