@@ -17,17 +17,24 @@ Dos decisiones que vienen de la temática:
 
 - La entidad de la consigna se llama `Enrollment` (inscripción) y no `Ticket`. En un club las
   jugadoras se anotan a una actividad, no compran una entrada, así que el evento no tiene precio.
-- Los roles del curso se mapean al club: `admin` (dirigencia), `coach` (cuerpo técnico, equivale al
-  `organizer` de la consigna) y `player` (jugadora, equivale al `user`).
+- Los roles llevan el nombre que se usa en el club. La equivalencia con los del curso es directa:
 
-Estado de esta entrega: base arquitectónica. Todavía no hay autenticación, ni hash de contraseñas,
-ni control de permisos por rol. Eso entra en las próximas entregas.
+| Rol del curso | Rol acá | Quién es |
+|---|---|---|
+| `admin` | `admin` | Dirigencia del club |
+| `organizer` | `coach` | Cuerpo técnico: crea y administra las actividades |
+| `user` | `player` | Jugadora: consulta actividades y se anota |
+
+Estado actual: la base por capas está armada y el registro de usuarias funciona con validaciones,
+normalización de email y hash con bcrypt. Falta el login con JWT, las cookies, Passport y el
+control de permisos por rol.
 
 ## Tecnologías
 
 - Node.js 20 o superior (usa top level await y `node --watch`)
 - Express 5
-- MongoDB Atlas + Mongoose 9
+- MongoDB + Mongoose 9
+- bcryptjs para el hash de contraseñas
 - dotenv
 - Módulos ESM (`import` / `export`)
 
@@ -112,16 +119,17 @@ proyectoBEII/
 │   │   └── enrollments.controller.js
 │   ├── services/
 │   │   ├── index.js                arma las dependencias e inyecta
-│   │   ├── user.service.js
-│   │   ├── event.service.js
-│   │   └── enrollment.service.js
+│   │   ├── sessions.service.js     registro: validación, normalización y hash
+│   │   ├── users.service.js
+│   │   ├── events.service.js
+│   │   └── enrollments.service.js
 │   ├── repositories/
-│   │   ├── user.repository.js
-│   │   ├── event.repository.js
-│   │   └── enrollment.repository.js
+│   │   ├── users.repository.js
+│   │   ├── events.repository.js
+│   │   └── enrollments.repository.js
 │   ├── dao/
 │   │   ├── mongo.dao.js            CRUD genérico contra un modelo de Mongoose
-│   │   └── user.dao.js             agrega las búsquedas por email
+│   │   └── users.dao.js            agrega las búsquedas por email
 │   ├── models/
 │   │   ├── user.model.js
 │   │   ├── category.model.js
@@ -131,6 +139,7 @@ proyectoBEII/
 │   │   ├── notFound.js
 │   │   └── errorHandler.js
 │   └── utils/
+│       ├── hash.js                 bcrypt reutilizable
 │       ├── httpError.js
 │       └── validators.js
 ├── .env.example
@@ -154,7 +163,8 @@ Qué hace cada capa:
   con `console.log`, se pasan con `next(error)` al middleware central.
 - **Service**: reglas de negocio y validaciones. Lanza `HttpError` con el código que corresponde.
 - **Repository**: coordina los accesos a datos y decide qué forma tiene lo que sale de la capa de
-  persistencia. Por ejemplo `UserRepository` saca `password` antes de devolver un usuario.
+  persistencia. `UserRepository` hace de DTO: arma a mano el objeto que sale de la API, así el
+  `password` no puede escaparse por descuido en ninguna respuesta.
 - **DAO**: habla con Mongoose. Es lo único que cambiaría si mañana la persistencia fuera otra.
 - **Modelo**: el schema de la colección.
 
@@ -181,7 +191,7 @@ Todas las respuestas usan el mismo envoltorio.
 ```
 
 ```json
-{ "status": "error", "error": "Evento no encontrado" }
+{ "status": "error", "message": "Evento no encontrado" }
 ```
 
 Códigos que devuelve la API:
@@ -192,9 +202,9 @@ Códigos que devuelve la API:
 | 201 | Recurso creado |
 | 400 | Datos o ids inválidos |
 | 404 | Recurso o ruta inexistente |
-| 409 | Conflicto (duplicado, evento sin cupo) |
+| 409 | Conflicto (email ya registrado, inscripción duplicada, evento sin cupo) |
 | 500 | Error interno |
-| 501 | Endpoint todavía no implementado (sessions) |
+| 501 | Endpoint todavía no implementado (login, current, logout) |
 
 El middleware `errorHandler` también traduce los errores propios de Mongoose: `ValidationError` y
 `CastError` salen como 400 y el error de índice duplicado como 409.
@@ -237,8 +247,66 @@ Base: `/api`
 
 ### Sessions
 
-Las rutas existen pero todavía responden 501. La lógica de registro, login y JWT entra en la
-próxima entrega.
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | `/api/sessions/register` | Registra una usuaria nueva |
+| POST | `/api/sessions/login` | Todavía responde 501 |
+| GET | `/api/sessions/current` | Todavía responde 501 |
+| POST | `/api/sessions/logout` | Todavía responde 501 |
+
+#### POST /api/sessions/register
+
+Campos que espera, los cuatro obligatorios:
+
+| Campo | Tipo | Validación |
+|---|---|---|
+| `first_name` | string | Requerido |
+| `last_name` | string | Requerido |
+| `email` | string | Requerido, formato válido, único. Se guarda con trim y en minúsculas |
+| `password` | string | Requerido, mínimo 6 caracteres. Se guarda hasheado con bcrypt |
+
+El campo `role` **se ignora si viene en el body**. Toda usuaria que se registra queda como
+`player`; los roles `coach` y `admin` se asignan aparte. Si no fuera así, cualquiera podría
+registrarse como administradora del club.
+
+Cómo probarlo:
+
+```bash
+curl -X POST http://localhost:8080/api/sessions/register \
+  -H "Content-Type: application/json" \
+  -d '{"first_name":"Ana","last_name":"Pérez","email":"Ana@Mail.com ","password":"Secreta123"}'
+```
+
+Respuesta `201`, con el email ya normalizado y sin el campo `password`:
+
+```json
+{
+  "status": "success",
+  "payload": {
+    "id": "6aa2c31b45e4276af5134f05",
+    "first_name": "Ana",
+    "last_name": "Pérez",
+    "email": "ana@mail.com",
+    "role": "player"
+  }
+}
+```
+
+Errores posibles:
+
+```json
+{ "status": "error", "message": "Faltan campos obligatorios" }
+{ "status": "error", "message": "El email no tiene un formato válido" }
+{ "status": "error", "message": "El password debe tener al menos 6 caracteres" }
+{ "status": "error", "message": "El email ya está registrado" }
+```
+
+Los tres primeros son `400`, el último `409`.
+
+Un detalle del orden: el email se normaliza **antes** de validarlo y antes de buscarlo en la base.
+Si se valida primero, un email como `"Ana@Mail.com "` lo rechaza el regex por el espacio del final;
+y si se busca sin normalizar, no coincide con el `ana@mail.com` que ya está guardado y termina
+entrando duplicado.
 
 | Método | Ruta |
 |---|---|
@@ -279,13 +347,13 @@ curl -X POST http://localhost:8080/api/enrollments/68b0f1c2a4e5d6f7a8b9c0d1/68b0
 Si el evento ya está completo, responde 409:
 
 ```json
-{ "status": "error", "error": "El evento no tiene cupo disponible" }
+{ "status": "error", "message": "El evento no tiene cupo disponible" }
 ```
 
 ## Modelo de datos
 
-**User**: `first_name`, `last_name`, `email` (único), `password`, `role` (`admin` | `coach` |
-`player`).
+**User**: `first_name`, `last_name`, `email` (único, guardado en minúsculas), `password` (hasheado
+con bcrypt, nunca en texto plano), `role` (`admin` | `coach` | `player`, por defecto `player`).
 
 **Category**: `name` (único), `description`. Representa la categoría del club: Sub-14, Sub-16,
 Primera.
@@ -301,6 +369,9 @@ Primera.
 
 Están en la capa de servicios, no en los controladores ni en las rutas.
 
+- No se puede registrar dos veces el mismo email, aunque venga con otras mayúsculas o con espacios.
+- La contraseña se guarda hasheada con bcrypt, nunca en texto plano.
+- El `role` no se puede elegir desde el body del registro.
 - No se puede inscribir a una jugadora en un evento que no está `programado`.
 - No se puede inscribir dos veces a la misma jugadora en el mismo evento.
 - No se puede inscribir si ya se llegó a `capacity`.
@@ -308,7 +379,7 @@ Están en la capa de servicios, no en los controladores ni en las rutas.
 
 ## Pendiente para las próximas entregas
 
-- Registro y login con bcrypt, JWT y cookies.
+- Login con JWT y cookies.
 - Passport y estrategia `current`.
 - Middlewares de autorización por rol.
 - DTOs propios para cada respuesta.

@@ -1,8 +1,13 @@
+//esta clase es la unica que le habla a mongoose. Si algun dia cambio de base,
+//toco solo esta capa y los services ni se enteran.
+//le paso el modelo por constructor asi me sirve para users, events y enrollments
 export class MongoDao {
     constructor(model) {
         this.model = model;
     }
 
+    //el .lean() me devuelve un objeto js comun en vez de un documento de mongoose,
+    //que es lo que necesito para pasarselo al repository
     async find(filter = {}) {
         return this.model.find(filter).lean();
     }
@@ -20,6 +25,7 @@ export class MongoDao {
         return document.toObject();
     }
 
+    //runValidators porque por default el update se saltea las validaciones del schema
     async update(id, data) {
         return this.model.findByIdAndUpdate(id, data, { new: true, runValidators: true }).lean();
     }

@@ -1,3 +1,5 @@
+//por ahora el repository del evento le pasa todo derecho al dao. Lo dejo igual porque
+//es el lugar donde despues van a ir los DTO y las consultas que mezclen mas de una coleccion
 export class EventRepository {
     constructor(dao) {
         this.dao = dao;

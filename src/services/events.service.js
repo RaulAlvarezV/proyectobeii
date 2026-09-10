@@ -6,6 +6,8 @@ export class EventService {
         this.repository = repository;
     }
 
+    //armo el filtro a mano y no le paso req.query directo al dao,
+    //sino cualquiera me manda campos raros por la url y me consulta lo que quiere
     async getAll(query = {}) {
         const filter = {};
         if (query.type) filter.type = query.type;

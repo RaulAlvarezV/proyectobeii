@@ -18,6 +18,8 @@ const enrollmentSchema = new Schema({
     }
 }, { timestamps: true });
 
+//indice unico sobre los dos campos juntos: una jugadora no puede estar
+//anotada dos veces en la misma actividad
 enrollmentSchema.index({ user: 1, event: 1 }, { unique: true });
 
 export const enrollmentModel = model("Enrollment", enrollmentSchema);

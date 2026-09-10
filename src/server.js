@@ -2,6 +2,8 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 
+//conecto la base ANTES de escuchar. Si la base no responde no quiero un server
+//levantado que le conteste 500 a todo el mundo
 try {
     await connectDB();
     console.log("Conectado a MongoDB");

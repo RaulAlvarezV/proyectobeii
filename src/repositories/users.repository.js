@@ -1,8 +1,16 @@
+//este es el DTO hecho a mano: aca decido que datos del usuario salen de la app.
+//el password no sale nunca, ni siquiera hasheado. Tampoco devuelvo __v ni los timestamps
+//porque al front no le sirven de nada
 function toPublicUser(user) {
     if (!user) return null;
 
-    const { password, __v, ...publicUser } = user;
-    return publicUser;
+    return {
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        role: user.role
+    };
 }
 
 export class UserRepository {
@@ -21,6 +29,10 @@ export class UserRepository {
 
     async getByEmail(email) {
         return toPublicUser(await this.dao.findByEmail(email));
+    }
+
+    async create(data) {
+        return toPublicUser(await this.dao.create(data));
     }
 
     async updateByEmail(email, data) {

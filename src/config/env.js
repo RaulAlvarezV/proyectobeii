@@ -1,7 +1,10 @@
 import { config } from "dotenv";
 
+//el quiet es para que dotenv no me imprima su banner de publicidad en cada arranque
 config({ quiet: true });
 
+//si falta alguna de estas no tiene sentido arrancar, prefiero que reviente aca
+//con un mensaje claro y no despues contra la base
 const required = ["MONGO_URL"];
 const missing = required.filter(key => !process.env[key]);
 
